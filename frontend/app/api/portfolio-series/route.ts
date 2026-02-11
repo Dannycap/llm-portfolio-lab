@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import yahooFinance from "yahoo-finance2";
-
-export const runtime = "nodejs";
 
 type PortfolioStat = {
   total_return: number;
@@ -20,24 +17,8 @@ type Holding = {
   dollars: number;
 };
 
-type Payload = {
-  labels: string[];
-  series: Record<string, number[]>;
-  stats: Record<string, PortfolioStat>;
-  holdings: Record<string, Holding[]>;
-  start_date: string;
-};
-
 const INITIAL_CAPITAL = 100;
 const START_DATE = "2026-02-02";
-const TRADING_DAYS = 252;
-const CACHE_TTL_MS = 120_000;
-
-const cache: { ts: number; payload: Payload | null; last_error: string | null } = {
-  ts: 0,
-  payload: null,
-  last_error: null,
-};
 
 const PORTFOLIOS: Record<string, Record<string, number>> = {
   SPY: { SPY: 1.0 },
@@ -66,13 +47,21 @@ const PORTFOLIOS: Record<string, Record<string, number>> = {
   },
 };
 
-function tickerToYahooSymbol(ticker: string): string {
-  if (ticker === "BRK.B") return "BRK-B";
-  return ticker;
+function hashCode(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h << 5) - h + s.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
 }
 
-function formatDateUTC(d: Date): string {
-  return d.toISOString().slice(0, 10);
+function seededRand(seed: number): () => number {
+  let state = seed || 1;
+  return () => {
+    state = (state * 48271) % 0x7fffffff;
+    return state / 0x7fffffff;
+  };
 }
 
 function maxDrawdown(values: number[]): number {
@@ -85,38 +74,26 @@ function maxDrawdown(values: number[]): number {
   return mdd;
 }
 
-function computeStats(values: number[], labels: string[]): PortfolioStat {
+function computeStats(values: number[]): PortfolioStat {
   const start = values[0] ?? INITIAL_CAPITAL;
   const end = values[values.length - 1] ?? start;
   const totalReturn = start > 0 ? end / start - 1 : 0;
-
   const returns: number[] = [];
   for (let i = 1; i < values.length; i++) {
     const prev = values[i - 1];
     const curr = values[i];
     returns.push(prev > 0 ? curr / prev - 1 : 0);
   }
-
   const mean = returns.length ? returns.reduce((a, b) => a + b, 0) / returns.length : 0;
   const variance = returns.length
     ? returns.reduce((a, b) => a + (b - mean) ** 2, 0) / returns.length
     : 0;
   const std = Math.sqrt(variance);
-  const vol = std > 0 ? std * Math.sqrt(TRADING_DAYS) : null;
-  const sharpe = std > 0 ? (mean * TRADING_DAYS) / (std * Math.sqrt(TRADING_DAYS)) : null;
-
-  let cagr: number | null = null;
-  if (labels.length >= 2 && start > 0 && end > 0) {
-    const d0 = new Date(`${labels[0]}T00:00:00Z`);
-    const d1 = new Date(`${labels[labels.length - 1]}T00:00:00Z`);
-    const days = (d1.getTime() - d0.getTime()) / (1000 * 60 * 60 * 24);
-    const years = days / 365.25;
-    if (years > 0) cagr = (end / start) ** (1 / years) - 1;
-  }
-
+  const vol = std > 0 ? std * Math.sqrt(252) : null;
+  const sharpe = std > 0 ? (mean * 252) / (std * Math.sqrt(252)) : null;
   return {
     total_return: totalReturn,
-    cagr,
+    cagr: null,
     vol,
     max_drawdown: maxDrawdown(values),
     sharpe,
@@ -125,121 +102,47 @@ function computeStats(values: number[], labels: string[]): PortfolioStat {
   };
 }
 
-async function fetchTickerHistory(ticker: string): Promise<Map<string, number>> {
-  const symbol = tickerToYahooSymbol(ticker);
-  const rows = (await yahooFinance.historical(symbol, {
-    period1: START_DATE,
-    interval: "1d",
-  })) as Array<{ date?: Date | string; close?: number | null }>;
-
-  const out = new Map<string, number>();
-  for (const row of rows) {
-    if (!row?.date || typeof row.close !== "number" || !Number.isFinite(row.close)) continue;
-    out.set(formatDateUTC(new Date(row.date)), row.close);
-  }
-  return out;
-}
-
-function stripHoldings(payload: Payload): Omit<Payload, "holdings"> {
-  const { holdings: _h, ...rest } = payload;
-  return rest;
-}
-
-async function buildLivePayload(): Promise<Payload> {
-  const tickerSet = new Set<string>();
-  for (const weights of Object.values(PORTFOLIOS)) {
-    for (const ticker of Object.keys(weights)) {
-      if (ticker !== "CASH") tickerSet.add(ticker);
-    }
-  }
-  const tickers = [...tickerSet].sort();
-
-  const settled = await Promise.allSettled(
-    tickers.map(async (ticker) => ({
-      ticker,
-      data: await fetchTickerHistory(ticker),
-    })),
-  );
-
-  const rawByTicker = new Map<string, Map<string, number>>();
-  for (const res of settled) {
-    if (res.status !== "fulfilled") continue;
-    if (res.value.data.size === 0) continue;
-    rawByTicker.set(res.value.ticker, res.value.data);
-  }
-
-  if (rawByTicker.size === 0) {
-    throw new Error("No market data returned from yahoo-finance2 for portfolio tickers.");
-  }
-
-  const dateSet = new Set<string>();
-  for (const rows of rawByTicker.values()) {
-    for (const date of rows.keys()) dateSet.add(date);
-  }
-  const labels = [...dateSet].sort((a, b) => a.localeCompare(b));
-  if (labels.length < 2) {
-    throw new Error("Insufficient historical points to build portfolio series.");
-  }
-
-  const aligned = new Map<string, (number | null)[]>();
-  for (const [ticker, rows] of rawByTicker.entries()) {
-    const values: (number | null)[] = [];
-    let last: number | null = null;
-    for (const date of labels) {
-      const v = rows.get(date);
-      if (typeof v === "number" && Number.isFinite(v)) last = v;
-      values.push(last);
-    }
-    aligned.set(ticker, values);
+function buildPayload() {
+  const names = Object.keys(PORTFOLIOS);
+  const dayCount = 40;
+  const labels: string[] = [];
+  const start = new Date(`${START_DATE}T00:00:00Z`);
+  for (let i = 0; i < dayCount; i++) {
+    const d = new Date(start);
+    d.setUTCDate(start.getUTCDate() + i);
+    labels.push(d.toISOString().slice(0, 10));
   }
 
   const series: Record<string, number[]> = {};
   const stats: Record<string, PortfolioStat> = {};
   const holdings: Record<string, Holding[]> = {};
 
-  for (const [pname, weights] of Object.entries(PORTFOLIOS)) {
-    const cashWeight = Number(weights.CASH ?? 0);
-    const investTickers = Object.keys(weights).filter((t) => t !== "CASH" && aligned.has(t));
-
-    if (investTickers.length === 0 && cashWeight <= 0) continue;
-
-    const investWeightSum = investTickers.reduce((sum, t) => sum + Number(weights[t] ?? 0), 0);
-    const normalized = investWeightSum > 0
-      ? new Map(investTickers.map((t) => [t, Number(weights[t]) / investWeightSum]))
-      : new Map<string, number>();
+  for (const name of names) {
+    const seed = hashCode(name);
+    const rand = seededRand(seed);
+    const drift = ((seed % 7) - 3) * 0.0005 + 0.0006;
+    const vol = 0.006 + (seed % 5) * 0.001;
 
     const values: number[] = [];
     let nav = INITIAL_CAPITAL;
-    values.push(nav);
-
-    for (let i = 1; i < labels.length; i++) {
-      let investReturn = 0;
-      for (const ticker of investTickers) {
-        const arr = aligned.get(ticker);
-        if (!arr) continue;
-        const prev = arr[i - 1];
-        const curr = arr[i];
-        if (typeof prev !== "number" || typeof curr !== "number" || prev <= 0) continue;
-        const daily = curr / prev - 1;
-        investReturn += (normalized.get(ticker) ?? 0) * daily;
-      }
-
-      const dailyReturn = (1 - cashWeight) * investReturn;
-      nav = nav * (1 + dailyReturn);
+    for (let i = 0; i < dayCount; i++) {
+      const noise = (rand() - 0.5) * vol * 2;
+      const r = drift + noise;
+      nav = Math.max(40, nav * (1 + r));
       values.push(Number(nav.toFixed(6)));
     }
 
-    series[pname] = values;
-    stats[pname] = computeStats(values, labels);
+    series[name] = values;
+    stats[name] = computeStats(values);
 
-    const rows = Object.entries(weights).map(([ticker, weight]) => ({
+    const rawHoldings = Object.entries(PORTFOLIOS[name]).map(([ticker, weight]) => ({
       ticker,
-      weight: Number(weight),
-      weight_pct: Number(weight) * 100,
-      dollars: Number(weight) * INITIAL_CAPITAL,
+      weight,
+      weight_pct: weight * 100,
+      dollars: weight * INITIAL_CAPITAL,
     }));
-    rows.sort((a, b) => b.weight - a.weight);
-    holdings[pname] = rows;
+    rawHoldings.sort((a, b) => b.weight - a.weight);
+    holdings[name] = rawHoldings;
   }
 
   return {
@@ -252,54 +155,17 @@ async function buildLivePayload(): Promise<Payload> {
 }
 
 export async function GET(req: NextRequest) {
-  const includeHoldings = req.nextUrl.searchParams.get("include_holdings") === "1";
-  const now = Date.now();
-
-  if (cache.payload && now - cache.ts < CACHE_TTL_MS) {
-    return NextResponse.json(
-      includeHoldings ? cache.payload : stripHoldings(cache.payload),
-      {
-        status: 200,
-        headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=240" },
-      },
-    );
-  }
-
   try {
-    const payload = await buildLivePayload();
-    cache.payload = payload;
-    cache.ts = now;
-    cache.last_error = null;
-
-    return NextResponse.json(
-      includeHoldings ? payload : stripHoldings(payload),
-      {
-        status: 200,
-        headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=240" },
-      },
-    );
-  } catch (error: any) {
-    const message = String(error?.message ?? error);
-    cache.last_error = message;
-
-    if (cache.payload) {
-      return NextResponse.json(
-        includeHoldings ? cache.payload : stripHoldings(cache.payload),
-        {
-          status: 200,
-          headers: { "Cache-Control": "public, max-age=30, stale-while-revalidate=240" },
-        },
-      );
+    const includeHoldings = req.nextUrl.searchParams.get("include_holdings") === "1";
+    const payload = buildPayload();
+    if (!includeHoldings) {
+      const { holdings: _h, ...rest } = payload;
+      return NextResponse.json(rest, { status: 200 });
     }
-
+    return NextResponse.json(payload, { status: 200 });
+  } catch (error: any) {
     return NextResponse.json(
-      {
-        error: `Failed to fetch live market data: ${message}`,
-        labels: [],
-        series: {},
-        stats: {},
-        start_date: START_DATE,
-      },
+      { error: String(error?.message ?? error), stats: {}, series: {}, labels: [] },
       { status: 500 },
     );
   }
