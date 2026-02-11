@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+
 type OutlookConsensus = {
   macro_regime?: {
     label?: string;
@@ -41,8 +43,125 @@ type OutlookPayload = {
   models?: OutlookModel[];
 };
 
+type RawOutlookModel = {
+  regime_consistency?: { summary?: string | null };
+  objective_drift?: { summary?: string | null; patterns_detected?: string[] };
+  asset_role_stability?: { stable_assets?: string[] };
+  confidence_analysis?: { trend?: string | null; observations?: string[] };
+  cognitive_style?: { labels?: string[]; rationale?: string[] };
+};
+
 function isFiniteNumber(x: unknown): x is number {
   return typeof x === "number" && Number.isFinite(x);
+}
+
+function topKeys(counts: Map<string, number>, limit: number): string[] {
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([k]) => k);
+}
+
+function normalizeOutlookPayload(input: unknown): OutlookPayload {
+  if (input && typeof input === "object" && Array.isArray((input as OutlookPayload).models)) {
+    return input as OutlookPayload;
+  }
+
+  const raw = (input ?? {}) as Record<string, RawOutlookModel>;
+  const entries = Object.entries(raw).filter(([, value]) => value && typeof value === "object");
+
+  const models: OutlookModel[] = entries.map(([name, m]) => ({
+    name,
+    regime_summary: m.regime_consistency?.summary ?? null,
+    objective_summary: m.objective_drift?.summary ?? null,
+    objective_flags: m.objective_drift?.patterns_detected ?? [],
+    stable_assets: m.asset_role_stability?.stable_assets ?? [],
+    confidence: {
+      trend: m.confidence_analysis?.trend ?? null,
+      notes: m.confidence_analysis?.observations ?? [],
+    },
+    style: {
+      labels: m.cognitive_style?.labels ?? [],
+      notes: m.cognitive_style?.rationale ?? [],
+    },
+  }));
+
+  const regimeCounts = new Map<string, number>();
+  const objectiveCounts = new Map<string, number>();
+  const stableAssetCounts = new Map<string, number>();
+  const themeCounts = new Map<string, number>();
+  const clusterMembers = new Map<string, string[]>();
+
+  for (const m of models) {
+    if (m.regime_summary) regimeCounts.set(m.regime_summary, (regimeCounts.get(m.regime_summary) ?? 0) + 1);
+    if (m.objective_summary) objectiveCounts.set(m.objective_summary, (objectiveCounts.get(m.objective_summary) ?? 0) + 1);
+    for (const t of m.stable_assets ?? []) stableAssetCounts.set(t, (stableAssetCounts.get(t) ?? 0) + 1);
+    for (const t of m.objective_flags ?? []) themeCounts.set(t, (themeCounts.get(t) ?? 0) + 1);
+
+    const labels = m.style?.labels ?? [];
+    const cluster = labels.length > 0 ? labels.join(" + ") : "Unlabeled";
+    const members = clusterMembers.get(cluster) ?? [];
+    members.push(m.name);
+    clusterMembers.set(cluster, members);
+  }
+
+  const regimeTop = topKeys(regimeCounts, 1)[0];
+  const objectiveTop = topKeys(objectiveCounts, 1)[0];
+  const agreementRatio = models.length > 0 && regimeTop ? (regimeCounts.get(regimeTop) ?? 0) / models.length : 0;
+  const agreementLevel =
+    agreementRatio >= 0.8 ? "High" : agreementRatio >= 0.5 ? "Moderate" : models.length > 0 ? "Low" : undefined;
+
+  const disagreementBuckets = (source: (m: OutlookModel) => string | undefined, topic: string): OutlookDisagreement | null => {
+    const groups = new Map<string, string[]>();
+    for (const m of models) {
+      const label = source(m);
+      if (!label) continue;
+      const bucket = groups.get(label) ?? [];
+      bucket.push(m.name);
+      groups.set(label, bucket);
+    }
+    if (groups.size <= 1) return null;
+    return {
+      topic,
+      sides: [...groups.entries()]
+        .map(([label, names]) => ({ label, models: names.sort((a, b) => a.localeCompare(b)) }))
+        .sort((a, b) => b.models.length - a.models.length || a.label.localeCompare(b.label)),
+    };
+  };
+
+  const disagreements = [
+    disagreementBuckets((m) => m.regime_summary ?? undefined, "Macro regime"),
+    disagreementBuckets((m) => m.objective_summary ?? undefined, "Objective focus"),
+    disagreementBuckets((m) => m.confidence?.trend ?? undefined, "Confidence"),
+  ].filter((d): d is OutlookDisagreement => d != null);
+
+  return {
+    title: "Outlook",
+    consensus: {
+      macro_regime: {
+        label: regimeTop,
+        agreement_level: agreementLevel,
+        most_common_themes: topKeys(themeCounts, 6),
+      },
+      objective_tilt: {
+        label: objectiveTop,
+        clusters: [...clusterMembers.entries()]
+          .map(([cluster, members]) => ({
+            cluster,
+            members: [...members].sort((a, b) => a.localeCompare(b)),
+          }))
+          .sort((a, b) => b.members.length - a.members.length || a.cluster.localeCompare(b.cluster)),
+      },
+      role_stability: {
+        high_stability_assets: topKeys(stableAssetCounts, 24),
+        asset_frequency: [...stableAssetCounts.entries()]
+          .map(([ticker, count]) => ({ ticker, count }))
+          .sort((a, b) => b.count - a.count || a.ticker.localeCompare(b.ticker)),
+      },
+    },
+    disagreements,
+    models,
+  };
 }
 
 export default function OutlookPage() {
@@ -54,15 +173,36 @@ export default function OutlookPage() {
     let mounted = true;
 
     const fetchOutlook = async () => {
-      try {
-        const res = await fetch("/api/outlook", { cache: "no-store" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = (await res.json()) as OutlookPayload;
+      const endpoints = [...new Set(["/api/outlook", `${API_BASE}/api/outlook`, "/outlook.json"])];
+      const failures: string[] = [];
 
-        if (!mounted) return;
-        setData(json);
-        setErr(null);
-        setLastUpdatedTs(Date.now());
+      try {
+        for (const endpoint of endpoints) {
+          try {
+            const res = await fetch(endpoint, { cache: "no-store" });
+            if (!res.ok) {
+              failures.push(`${endpoint} -> HTTP ${res.status}`);
+              continue;
+            }
+
+            const json = await res.json();
+            const normalized = normalizeOutlookPayload(json);
+            if ((normalized.models ?? []).length === 0) {
+              failures.push(`${endpoint} -> empty payload`);
+              continue;
+            }
+
+            if (!mounted) return;
+            setData(normalized);
+            setErr(null);
+            setLastUpdatedTs(Date.now());
+            return;
+          } catch (endpointErr: any) {
+            failures.push(`${endpoint} -> ${String(endpointErr?.message ?? endpointErr)}`);
+          }
+        }
+
+        throw new Error(failures.length > 0 ? failures.join(" | ") : "No outlook source available");
       } catch (e: any) {
         if (!mounted) return;
         setErr(String(e?.message ?? e));
@@ -99,7 +239,6 @@ export default function OutlookPage() {
 
         <nav>
           <a href="/">Dashboard</a>
-          <a href="/outlook">Outlook</a>
           <a href="/holdings">Holdings</a>
           <a href="/prompt">Prompt</a>
         </nav>
@@ -305,3 +444,4 @@ export default function OutlookPage() {
     </div>
   );
 }
+

@@ -11,6 +11,7 @@ type PortfolioStat = {
   sharpe: number;
   cagr?: number;
   vol?: number;
+  end_value?: number;
 };
 
 type Payload = {
@@ -38,6 +39,20 @@ export default function Home() {
     const interval = setInterval(fetchStats, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  const fmtDollars = (value: number) =>
+    value.toLocaleString(undefined, {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 2,
+    });
+
+  const totalPortfolioValue = payload?.stats
+    ? Object.values(payload.stats).reduce(
+        (total, stat) => total + (stat.end_value ?? 0),
+        0,
+      )
+    : null;
 
   return (
     <div className="container">
@@ -88,7 +103,12 @@ export default function Home() {
           <div className="card-head">
             <div>
               <p className="title">Portfolio Stats</p>
-              <p className="sub">Live performance metrics</p>
+              <p className="sub">
+                Live performance metrics
+                {totalPortfolioValue != null
+                  ? ` • Total portfolio value ${fmtDollars(totalPortfolioValue)}`
+                  : ""}
+              </p>
             </div>
             <div className="pill">
               {statsErr ? `Last error: ${statsErr}` : "Live"}
@@ -101,6 +121,7 @@ export default function Home() {
                 <thead>
                   <tr>
                     <th>Portfolio</th>
+                    <th className="right">Total Value</th>
                     <th className="right">Return</th>
                     <th className="right">Drawdown</th>
                     <th className="right">Sharpe</th>
@@ -112,6 +133,9 @@ export default function Home() {
                       <tr key={name}>
                         <td>
                           <strong>{name}</strong>
+                        </td>
+                        <td className="right">
+                          {s.end_value != null ? fmtDollars(s.end_value) : "—"}
                         </td>
                         <td className="right">
                           {(s.total_return * 100).toFixed(2)}%
@@ -126,7 +150,7 @@ export default function Home() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="muted">
+                      <td colSpan={5} className="muted">
                         Loading…
                       </td>
                     </tr>
