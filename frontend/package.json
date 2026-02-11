@@ -11,8 +11,7 @@
   "dependencies": {
     "next": "14.2.35",
     "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "yahoo-finance2": "^3.13.0"
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@types/node": "20.11.30",

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+
 type OutlookConsensus = {
   macro_regime?: {
     label?: string;
@@ -171,7 +173,7 @@ export default function OutlookPage() {
     let mounted = true;
 
     const fetchOutlook = async () => {
-      const endpoints = [...new Set(["/api/outlook", "/outlook.json"])];
+      const endpoints = [...new Set(["/api/outlook", `${API_BASE}/api/outlook`, "/outlook.json"])];
       const failures: string[] = [];
 
       try {

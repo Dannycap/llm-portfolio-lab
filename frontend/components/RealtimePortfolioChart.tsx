@@ -30,58 +30,31 @@ function hashCode(s: string) {
   return h;
 }
 
-function buildSeriesColorMap(names: string[]) {
-  const ordered = [...names].sort((a, b) => {
-    const hA = Math.abs(hashCode(a));
-    const hB = Math.abs(hashCode(b));
-    return hA - hB || a.localeCompare(b);
-  });
-
-  const colorMap: Record<string, string> = {};
-  for (let i = 0; i < ordered.length; i++) {
-    const hue = Math.round((i * 137.508) % 360); // golden-angle spacing to avoid clustered hues
-    const saturation = 72;
-    const lightness = i % 2 === 0 ? 58 : 66; // alternate brightness for adjacent entries
-    colorMap[ordered[i]] = `hsl(${hue} ${saturation}% ${lightness}%)`;
-  }
-  return colorMap;
+function getSeriesColor(name: string) {
+  const hue = Math.abs(hashCode(name)) % 360;
+  return `hsl(${hue} 70% 60%)`;
 }
 
-type RealtimePortfolioChartProps = {
-  data?: Payload | null;
-  err?: string | null;
-  disableFetch?: boolean;
-};
-
-export default function RealtimePortfolioChart({
-  data: externalData = null,
-  err: externalErr = null,
-  disableFetch = false,
-}: RealtimePortfolioChartProps) {
-  const [internalData, setInternalData] = useState<Payload | null>(null);
-  const [internalErr, setInternalErr] = useState<string | null>(null);
+export default function RealtimePortfolioChart() {
+  const [data, setData] = useState<Payload | null>(null);
+  const [err, setErr] = useState<string | null>(null);
   const [hoverX, setHoverX] = useState<number | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
-  const data = externalData ?? internalData;
-  const err = externalErr ?? internalErr;
-
   useEffect(() => {
-    if (disableFetch) return;
-
     let mounted = true;
 
     const fetchSeries = async () => {
       try {
-        const res = await fetch("/api/portfolio-series?include_holdings=0");
+        const res = await fetch("/api/portfolio-series", { cache: "no-store" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = (await res.json()) as Payload;
         if (!mounted) return;
-        setInternalData(json);
-        setInternalErr(null);
+        setData(json);
+        setErr(null);
       } catch (e: any) {
         if (!mounted) return;
-        setInternalErr(String(e?.message ?? e));
+        setErr(String(e?.message ?? e));
       }
     };
 
@@ -91,7 +64,7 @@ export default function RealtimePortfolioChart({
       mounted = false;
       clearInterval(interval);
     };
-  }, [disableFetch]);
+  }, []);
 
   const { labels, series, names, minY, maxY, legendItems } = useMemo(() => {
     const labels = data?.labels ?? [];
@@ -184,7 +157,6 @@ export default function RealtimePortfolioChart({
   }, [hoverX, nPts, plotW]);
 
   const hoverLabel = hoverIndex != null ? labels[hoverIndex] : null;
-  const colorByName = useMemo(() => buildSeriesColorMap(names), [names]);
 
   return (
     <div>
@@ -246,7 +218,7 @@ export default function RealtimePortfolioChart({
             const arr = series[name] ?? [];
             if (arr.length < 2) return null;
 
-            const stroke = colorByName[name] ?? "hsl(210 70% 62%)";
+            const stroke = getSeriesColor(name);
 
             let d = "";
             for (let i = 0; i < arr.length; i++) {
@@ -358,7 +330,7 @@ export default function RealtimePortfolioChart({
         }}
       >
         {legendItems.map((it) => {
-          const color = colorByName[it.name] ?? "hsl(210 70% 62%)";
+          const color = getSeriesColor(it.name);
           const pct = isFiniteNumber(it.last) ? ((it.last - 100) / 100) * 100 : null;
           const isPositive = pct != null && pct >= 0;
 
