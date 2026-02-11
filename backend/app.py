@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.encoders import jsonable_encoder
 import pandas as pd
 import yfinance as yf
@@ -19,6 +20,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 PORTFOLIOS = {
     "SPY": {"SPY": 1.0},
@@ -396,6 +398,10 @@ def compute_payload():
     return sanitize_for_json(payload)
 
 
+def strip_holdings(payload: dict) -> dict:
+    return {k: v for k, v in payload.items() if k != "holdings"}
+
+
 def load_outlook():
     if not OUTLOOK_PATH.exists():
         raise RuntimeError(f"outlook.json not found at {OUTLOOK_PATH}")
@@ -405,7 +411,8 @@ def load_outlook():
 
 
 @app.get("/api/health")
-def health():
+def health(response: Response):
+    response.headers["Cache-Control"] = "no-store"
     return {
         "ok": True,
         "cached": _cache["payload"] is not None,
@@ -416,7 +423,8 @@ def health():
 
 
 @app.get("/api/outlook")
-def outlook():
+def outlook(response: Response):
+    response.headers["Cache-Control"] = f"public, max-age=60, stale-while-revalidate={OUTLOOK_CACHE_SECONDS}"
     now = time.time()
     if _outlook_cache["payload"] is not None and (now - _outlook_cache["ts"] < OUTLOOK_CACHE_SECONDS):
         return _outlook_cache["payload"]
@@ -435,10 +443,11 @@ def outlook():
 
 
 @app.get("/api/portfolio-series")
-def portfolio_series():
+def portfolio_series(response: Response, include_holdings: bool = Query(default=False)):
+    response.headers["Cache-Control"] = f"public, max-age={CACHE_SECONDS}, stale-while-revalidate={CACHE_SECONDS * 2}"
     now = time.time()
     if _cache["payload"] is not None and (now - _cache["ts"] < CACHE_SECONDS):
-        return _cache["payload"]
+        return _cache["payload"] if include_holdings else strip_holdings(_cache["payload"])
     try:
         payload = compute_payload()
         payload = sanitize_for_json(payload)
@@ -446,7 +455,7 @@ def portfolio_series():
         _cache["payload"] = payload
         _cache["ts"] = now
         _cache["last_error"] = None
-        return payload
+        return payload if include_holdings else strip_holdings(payload)
     except Exception as e:
         _cache["last_error"] = str(e)
         # If we have a cached payload, return it instead of hard failing the website

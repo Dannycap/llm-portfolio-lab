@@ -2,9 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
-
 type Holding = {
   ticker: string;
   weight: number;
@@ -83,9 +80,10 @@ export default function HoldingsPage() {
       try {
         const [healthRes, dataRes] = await Promise.all([
           fetch("/api/health", { cache: "no-store" }),
-          fetch(`${API_BASE}/api/portfolio-series`, { cache: "no-store" }),
+          fetch("/api/portfolio-series?include_holdings=1"),
         ]);
 
+        if (!healthRes.ok) throw new Error(`Health HTTP ${healthRes.status}`);
         const nextHealth = (await healthRes.json()) as Health;
         if (!dataRes.ok) throw new Error(`HTTP ${dataRes.status}`);
         const nextPayload = (await dataRes.json()) as Payload;

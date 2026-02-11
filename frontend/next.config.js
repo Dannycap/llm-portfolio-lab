@@ -1,15 +1,28 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  async rewrites() {
-    // If you run FastAPI separately (default port 10000), this proxies API calls from Next -> FastAPI.
-    // Outlook is served by FastAPI too (backend/outlook.json). If you instead want Next to serve it,
-    // remove this rewrite and add an app route handler.
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:10000";
+  compress: true,
+  poweredByHeader: false,
+  async headers() {
     return [
-      { source: "/api/health", destination: `${apiBase}/api/health` },
-      { source: "/api/portfolio-series", destination: `${apiBase}/api/portfolio-series` },
-      { source: "/api/outlook", destination: `${apiBase}/api/outlook` },
+      {
+        source: "/outlook.json",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=300, stale-while-revalidate=600",
+          },
+        ],
+      },
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
     ];
   },
 };

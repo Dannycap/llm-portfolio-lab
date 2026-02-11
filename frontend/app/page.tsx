@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import RealtimePortfolioChart from "@/components/RealtimePortfolioChart";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+import dynamic from "next/dynamic";
 
 type PortfolioStat = {
   total_return: number;
@@ -15,8 +13,22 @@ type PortfolioStat = {
 };
 
 type Payload = {
+  labels?: string[];
+  series?: Record<string, number[]>;
   stats?: Record<string, PortfolioStat>;
 };
+
+const RealtimePortfolioChart = dynamic(
+  () => import("@/components/RealtimePortfolioChart"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="muted" style={{ padding: 16 }}>
+        Loading chart...
+      </div>
+    ),
+  },
+);
 
 export default function Home() {
   const [payload, setPayload] = useState<Payload | null>(null);
@@ -25,7 +37,7 @@ export default function Home() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/portfolio-series`, { cache: "no-store" });
+        const res = await fetch("/api/portfolio-series?include_holdings=0");
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as Payload;
         setPayload(data);
@@ -94,7 +106,11 @@ export default function Home() {
           </div>
 
           <div className="chart-wrap">
-            <RealtimePortfolioChart />
+            <RealtimePortfolioChart
+              data={payload}
+              err={statsErr}
+              disableFetch
+            />
           </div>
         </div>
 
@@ -129,7 +145,9 @@ export default function Home() {
                 </thead>
                 <tbody>
                   {payload?.stats ? (
-                    Object.entries(payload.stats).map(([name, s]) => (
+                    Object.entries(payload.stats)
+                      .sort(([, a], [, b]) => (b.end_value ?? Number.NEGATIVE_INFINITY) - (a.end_value ?? Number.NEGATIVE_INFINITY))
+                      .map(([name, s]) => (
                       <tr key={name}>
                         <td>
                           <strong>{name}</strong>
@@ -169,3 +187,4 @@ export default function Home() {
     </div>
   );
 }
+
