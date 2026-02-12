@@ -1,3 +1,4 @@
+# app.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
@@ -28,22 +29,17 @@ PORTFOLIOS = {
         "GSG": 0.04, "AGG": 0.10, "HYG": 0.05,
     },
     "ChatGPT-5.2 DeepResearch": {
-        # Core Equity Beta (35%)
-        "SPY": 0.20,  # US market core beta (benchmark anchor)
-        "QQQ": 0.15,  # Structural tech / AI growth tilt
-        # Factor Alpha Sleeve (30%)
-        "AVUV": 0.10,  # US Small Cap Value (value + size premium)
-        "MTUM": 0.10,  # Momentum factor (trend persistence)
-        "QUAL": 0.10,  # Quality factor (ROE, balance sheet strength)
-        # International & EM Diversification (15%)
-        "VEA": 0.10,  # Developed ex-US (valuation + FX diversification)
-        "VWO": 0.05,  # Emerging markets (long-cycle growth optionality)
-        # Real Assets & Inflation Hedges (10%)
-        "GLD": 0.05,  # Gold (crisis hedge, real rates sensitivity)
-        "DBC": 0.05,  # Broad commodities (inflation + supply shocks)
-        # Defensive / Crisis Alpha (10%)
-        "DBMF": 0.05,  # Managed futures (trend-following, convexity)
-        "IEF": 0.05,  # Intermediate Treasuries (risk-off ballast)
+        "SPY": 0.20,
+        "QQQ": 0.15,
+        "AVUV": 0.10,
+        "MTUM": 0.10,
+        "QUAL": 0.10,
+        "VEA": 0.10,
+        "VWO": 0.05,
+        "GLD": 0.05,
+        "DBC": 0.05,
+        "DBMF": 0.05,
+        "IEF": 0.05,
     },
     "Claude Sonnet 4.5": {
         "VBR": 0.22,
@@ -61,7 +57,7 @@ PORTFOLIOS = {
         "SLV": 0.15,
         "XLI": 0.15,
         "TLT": 0.10,
-        "CASH": 0.05,  # NOTE: not a real ticker; treated as 0% return
+        "CASH": 0.05,  # treated as 0% return
     },
     "Meta AI": {
         "MSFT": 0.10,
@@ -101,7 +97,7 @@ PORTFOLIOS = {
         "MSFT": 0.15,
         "CRWD": 0.10,
         "IWM": 0.10,
-        "BRK.B": 0.10,
+        "BRK.B": 0.10,  # NOTE: will be mapped to BRK-B for Yahoo
         "JPM": 0.10,
         "VNQ": 0.10,
         "GLD": 0.10,
@@ -119,61 +115,46 @@ PORTFOLIOS = {
         "GLD": 0.10,
     },
     "DeepSeek-DeepThink": {
-        # US Equity Factor Tilts (40%)
-        "AVUV": 0.15,  # Small-cap value premium capture
-        "SPGP": 0.10,  # GARP strategy: growth at reasonable price
-        "XLF": 0.08,  # Financials sector rotation
-        "XLI": 0.07,  # Industrials: infrastructure & reshoring
-
-        # International Equity (15%)
-        "AVDV": 0.08,  # Int'l small-cap value triple premium
-        "INDA": 0.07,  # India structural growth story
-
-        # Fixed Income & Credit (20%)
-        "VCIT": 0.10,  # Intermediate corporate bonds (5.8% yield)
-        "TFLO": 0.07,  # Floating rate Treasury protection
-        "HYG": 0.03,  # Tactical high yield exposure
-
-        # Real Assets & Commodities (10%)
-        "VNQ": 0.05,  # REITs: commercial real estate recovery
-        "DBC": 0.03,  # Broad commodities inflation hedge
-        "URA": 0.02,  # Uranium: asymmetric energy transition play
-
-        # Alternative Strategies (10%)
-        "KMLM": 0.05,  # Managed futures for crisis alpha
-        "JEPI": 0.05,  # Covered call strategy for income + protection
-
-        # Cash & Liquidity (5%)
-        "SGOV": 0.05,  # Ultra-short Treasuries (5.1% yield, liquidity)
+        "AVUV": 0.15,
+        "SPGP": 0.10,
+        "XLF": 0.08,
+        "XLI": 0.07,
+        "AVDV": 0.08,
+        "INDA": 0.07,
+        "VCIT": 0.10,
+        "TFLO": 0.07,
+        "HYG": 0.03,
+        "VNQ": 0.05,
+        "DBC": 0.03,
+        "URA": 0.02,
+        "KMLM": 0.05,
+        "JEPI": 0.05,
+        "SGOV": 0.05,
     },
     "Gemini-3 DeepResearch ": {
-        # Fiscal Stimulus & Reshoring Alpha (35%)
-        "MADE": 0.20,  # US Manufacturing (OBBBA beneficiary)
-        "DRLL": 0.15,  # US Energy Infrastructure
-        # Growth & Tech Exposure (15%)
-        "QQQ": 0.15,  # AI Capex & Productivity Cycle
-        # Quality Beta & International Diversification (30%)
-        "VIG": 0.10,  # Dividend Growers (Late-cycle protection)
-        "VXUS": 0.10,  # International Stock Exposure
-        "EWJ": 0.10,  # Japan (Corporate reform/Sanaenomics)
-        # Real Assets & Defensive Income (20%)
-        "GLD": 0.10,  # Gold (Deficit & Geopolitical hedge)
-        "BKLN": 0.10,  # Senior Loans (Floating rate yield >8%)
+        "MADE": 0.20,
+        "DRLL": 0.15,
+        "QQQ": 0.15,
+        "VIG": 0.10,
+        "VXUS": 0.10,
+        "EWJ": 0.10,
+        "GLD": 0.10,
+        "BKLN": 0.10,
     }
 }
 
 START_DATE = "2026-02-02"
 
 _cache = {"ts": 0.0, "payload": None, "last_error": None}
-CACHE_SECONDS = 15  # refresh rate; avoid hammering yfinance
+CACHE_SECONDS = 15
 
 TRADING_DAYS = 252
-INITIAL_CAPITAL = 100.0  # ✅ NAV starts at $100 (and holdings dollars use this)
+INITIAL_CAPITAL = 100.0  # NAV starts at $100
 
 # Outlook JSON (served at /api/outlook)
 OUTLOOK_PATH = Path(__file__).resolve().parent / "outlook.json"
 _outlook_cache = {"ts": 0.0, "payload": None, "last_error": None}
-OUTLOOK_CACHE_SECONDS = 300  # 5 minutes
+OUTLOOK_CACHE_SECONDS = 300
 
 
 # ----------------------------
@@ -188,13 +169,9 @@ def _is_bad_number(x) -> bool:
 
 
 def sanitize_for_json(obj):
-    """
-    Recursively convert NaN/Inf to None so FastAPI/Starlette JSON is compliant.
-    """
     if obj is None:
         return None
 
-    # numpy scalars
     if isinstance(obj, (np.floating, np.integer)):
         obj = obj.item()
 
@@ -210,7 +187,6 @@ def sanitize_for_json(obj):
     if isinstance(obj, (list, tuple)):
         return [sanitize_for_json(v) for v in obj]
 
-    # fallback: let FastAPI encode (then sanitize again)
     try:
         encoded = jsonable_encoder(obj)
         return sanitize_for_json(encoded)
@@ -225,33 +201,16 @@ def _max_drawdown(equity: pd.Series) -> float:
 
 
 def _compute_stats(cum: pd.DataFrame) -> dict:
-    """
-    cum: equity curves (NAV), columns = portfolio names
-    returns: stats dict keyed by portfolio name
-    """
     daily_ret = cum.pct_change()
     daily_ret = daily_ret.replace([np.inf, -np.inf], np.nan).dropna(how="all")
 
     stats = {}
-
     for name in cum.columns:
         eq = cum[name].replace([np.inf, -np.inf], np.nan).dropna()
         if len(eq) < 2:
             continue
 
         dr = daily_ret[name].replace([np.inf, -np.inf], np.nan).dropna()
-        if len(dr) < 2:
-            total_return = float(eq.iloc[-1] / eq.iloc[0] - 1.0)
-            stats[name] = {
-                "total_return": total_return,
-                "cagr": None,
-                "vol": None,
-                "max_drawdown": _max_drawdown(eq),
-                "sharpe": None,
-                "start_value": float(eq.iloc[0]),
-                "end_value": float(eq.iloc[-1]),
-            }
-            continue
 
         total_return = float(eq.iloc[-1] / eq.iloc[0] - 1.0)
 
@@ -263,23 +222,19 @@ def _compute_stats(cum: pd.DataFrame) -> dict:
         else:
             cagr = None
 
-        # Annualized vol
-        std = float(dr.std())
-        vol = float(std * np.sqrt(TRADING_DAYS)) if std and std > 0 else None
-
-        # Sharpe (rf = 0)
-        if std and std > 0:
-            sharpe = float((dr.mean() * TRADING_DAYS) / (std * np.sqrt(TRADING_DAYS)))
+        if len(dr) >= 2:
+            std = float(dr.std())
+            vol = float(std * np.sqrt(TRADING_DAYS)) if std > 0 else None
+            sharpe = float((dr.mean() * TRADING_DAYS) / (std * np.sqrt(TRADING_DAYS))) if std > 0 else None
         else:
+            vol = None
             sharpe = None
-
-        mdd = _max_drawdown(eq)
 
         stats[name] = {
             "total_return": total_return,
             "cagr": cagr,
             "vol": vol,
-            "max_drawdown": mdd,
+            "max_drawdown": _max_drawdown(eq),
             "sharpe": sharpe,
             "start_value": float(eq.iloc[0]),
             "end_value": float(eq.iloc[-1]),
@@ -288,13 +243,30 @@ def _compute_stats(cum: pd.DataFrame) -> dict:
     return stats
 
 
+# ----------------------------
+# Ticker normalization for Yahoo
+# ----------------------------
+def yahoo_ticker(t: str) -> str:
+    """
+    Yahoo uses '-' for many share-class tickers (e.g., BRK.B -> BRK-B).
+    """
+    t = t.strip()
+    if t.upper() == "CASH":
+        return t
+    return t.replace(".", "-")
+
+
 def compute_payload():
-    # IMPORTANT: remove placeholders like CASH so yfinance doesn't fail everything
-    tickers = sorted({t for p in PORTFOLIOS.values() for t in p if t != "CASH"})
+    # Build mapping: original ticker -> yahoo ticker
+    all_original = sorted({t for p in PORTFOLIOS.values() for t in p.keys() if t.upper() != "CASH"})
+    orig_to_yahoo = {t: yahoo_ticker(t) for t in all_original}
+
+    # unique yahoo tickers for download
+    yahoo_tickers = sorted(set(orig_to_yahoo.values()))
 
     def _download(threads: bool):
         return yf.download(
-            tickers=" ".join(tickers),
+            tickers=" ".join(yahoo_tickers),
             start=START_DATE,
             auto_adjust=True,
             progress=False,
@@ -303,27 +275,24 @@ def compute_payload():
         )
 
     raw = _download(threads=True)
-
-    # yfinance sometimes returns empty; retry once
     if raw is None or getattr(raw, "empty", True):
         raw = _download(threads=False)
 
     if raw is None or raw.empty:
-        raise RuntimeError(f"yfinance returned no data. start={START_DATE} tickers={len(tickers)}")
+        raise RuntimeError(f"yfinance returned no data. start={START_DATE} tickers={len(yahoo_tickers)}")
 
-    # ✅ Build Close prices safely (even if some tickers fail)
+    # Build close prices (per yahoo ticker)
     close = pd.DataFrame(index=raw.index)
 
     if isinstance(raw.columns, pd.MultiIndex):
-        # columns: (TICKER, field)
         available = set(raw.columns.get_level_values(0))
-        for t in tickers:
-            if t in available and "Close" in raw[t].columns:
-                close[t] = raw[t]["Close"]
+        for yt in yahoo_tickers:
+            if yt in available and "Close" in raw[yt].columns:
+                close[yt] = raw[yt]["Close"]
     else:
         # single ticker shape
-        if "Close" in raw.columns:
-            close[tickers[0]] = raw["Close"]
+        if "Close" in raw.columns and len(yahoo_tickers) == 1:
+            close[yahoo_tickers[0]] = raw["Close"]
         else:
             raise RuntimeError(f"Unexpected yfinance columns: {list(raw.columns)[:20]}")
 
@@ -333,36 +302,46 @@ def compute_payload():
 
     close = close.sort_index().ffill()
 
-    # ✅ KEY CHANGE: keep first date so NAV starts exactly at $100
-    returns_full = close.pct_change().replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    # Daily returns; force first day to 0 so NAV starts exactly at 100
+    returns = close.pct_change().replace([np.inf, -np.inf], np.nan)
+    if len(returns.index) > 0:
+        returns.iloc[0] = 0.0
+    returns = returns.fillna(0.0)
 
-    cum = pd.DataFrame(index=returns_full.index)
+    cum = pd.DataFrame(index=returns.index)
 
-    for name, weights in PORTFOLIOS.items():
+    # Compute NAV correctly: portfolio return = sum(w_i * r_i) + cash * 0
+    # If a ticker is missing from returns, we treat that weight as "uninvested cash" (0% return)
+    for pname, weights in PORTFOLIOS.items():
         w = pd.Series(weights, dtype=float)
 
-        cols = [c for c in w.index if c in returns_full.columns]
+        # cash weight explicitly in portfolio
         cash_weight = float(w.get("CASH", 0.0))
 
-        if not cols and cash_weight <= 0:
-            continue
+        # original tickers excluding CASH
+        orig_holdings = [t for t in w.index if t.upper() != "CASH"]
 
-        if cols:
-            w_invest = w.loc[cols]
-            invest_sum = float(w_invest.sum())
-            if invest_sum > 0:
-                w_invest = w_invest / invest_sum
-                daily_invest = returns_full[cols] @ w_invest
+        # map to yahoo tickers and split into available / missing
+        contrib = pd.Series(0.0, index=returns.index)
+        missing_weight = 0.0
+
+        for ot in orig_holdings:
+            wt = float(w.get(ot, 0.0))
+            if wt == 0.0:
+                continue
+
+            yt = orig_to_yahoo.get(ot, yahoo_ticker(ot))
+            if yt in returns.columns:
+                contrib = contrib + (wt * returns[yt])
             else:
-                daily_invest = 0.0
-        else:
-            daily_invest = 0.0
+                # treat missing data as cash (0% return) instead of renormalizing
+                missing_weight += wt
 
-        # CASH earns 0% daily return
-        daily = (1.0 - cash_weight) * daily_invest
+        # total effective "cash-like" weight (0% return)
+        _ = cash_weight + missing_weight  # kept for clarity / debugging if needed
 
-        # ✅ NAV series starts at INITIAL_CAPITAL (100)
-        cum[name] = INITIAL_CAPITAL * (1.0 + daily).cumprod()
+        daily = contrib  # cash contributes 0% so nothing to add
+        cum[pname] = INITIAL_CAPITAL * (1.0 + daily).cumprod()
 
     if cum.empty:
         raise RuntimeError("No portfolios computed (missing tickers or data).")
@@ -371,7 +350,7 @@ def compute_payload():
     series = {col: [float(x) for x in cum[col].round(6).tolist()] for col in cum.columns}
     stats = _compute_stats(cum)
 
-    # ✅ Holdings payload (weights + percent + dollars)
+    # Holdings payload (original weights + dollars) — unchanged, just reporting the spec
     holdings = {}
     for pname, weights in PORTFOLIOS.items():
         items = []
@@ -439,17 +418,15 @@ def portfolio_series():
     now = time.time()
     if _cache["payload"] is not None and (now - _cache["ts"] < CACHE_SECONDS):
         return _cache["payload"]
+
     try:
         payload = compute_payload()
-        payload = sanitize_for_json(payload)
-
         _cache["payload"] = payload
         _cache["ts"] = now
         _cache["last_error"] = None
         return payload
     except Exception as e:
         _cache["last_error"] = str(e)
-        # If we have a cached payload, return it instead of hard failing the website
         if _cache["payload"] is not None:
             return _cache["payload"]
         raise
