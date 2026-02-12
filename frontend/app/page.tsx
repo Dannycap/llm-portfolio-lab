@@ -75,10 +75,10 @@ export default function Home() {
       <section className="hero">
         <h2>Objective</h2>
         <p>
-          The objective of LLM Portfolio Lab is to analyze and compare
-          LLM-generated investment portfolios using real market data,
-          standardized metrics, and transparent assumptions—purely for research
-          and educational purposes..
+          LLM Portfolio Lab is a research platform designed to systematically evaluate and compare LLM-generated investment
+          portfolios under standardized, transparent, and reproducible conditions. Each large language model (LLM) is given
+          $100 in initial capital, fully invested, and is tasked with constructing a portfolio intended to outperform the S&P 500 over a full market cycle.
+          The S&P 500 (proxied by SPY) serves as the benchmark for relative performance evaluation.
         </p>
       </section>
 
