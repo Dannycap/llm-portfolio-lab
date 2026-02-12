@@ -39,7 +39,7 @@
       ]
     }
   },
-  "Gemini": {
+  "Gemini-3": {
     "regime_consistency": {
       "summary": "Moderate growth with easing bias and rotation expectations.",
       "notable_shifts": []
@@ -78,7 +78,7 @@
       ]
     }
   },
-  "Meta": {
+  "Meta AI": {
     "regime_consistency": {
       "summary": "Mixed macro signals with AI optimism.",
       "notable_shifts": []
@@ -160,7 +160,7 @@
       ]
     }
   },
-  "Claude": {
+  "Claude Sonnet 4.5": {
     "regime_consistency": {
       "summary": "Late-cycle expansion with AI-driven conviction.",
       "notable_shifts": []
@@ -201,7 +201,7 @@
       ]
     }
   },
-  "ChatGPT": {
+  "ChatGPT-5.2": {
     "regime_consistency": {
       "summary": "Moderate growth with easing bias and elevated uncertainty.",
       "notable_shifts": []
