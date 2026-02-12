@@ -25,7 +25,9 @@ export default function Home() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/portfolio-series`, { cache: "no-store" });
+        const res = await fetch(`${API_BASE}/api/portfolio-series`, {
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as Payload;
         setPayload(data);
@@ -47,12 +49,14 @@ export default function Home() {
       maximumFractionDigits: 2,
     });
 
-  const totalPortfolioValue = payload?.stats
-    ? Object.values(payload.stats).reduce(
-        (total, stat) => total + (stat.end_value ?? 0),
-        0,
-      )
-    : null;
+  // 🔥 SORTED STATS (Highest Total Value → Lowest)
+  const sortedStats = payload?.stats
+    ? Object.entries(payload.stats).sort((a, b) => {
+        const aVal = a[1].end_value ?? 0;
+        const bVal = b[1].end_value ?? 0;
+        return bVal - aVal;
+      })
+    : [];
 
   return (
     <div className="container">
@@ -74,20 +78,20 @@ export default function Home() {
 
       <section className="hero">
         <h2>Objective</h2>
-      <p class="lead">
-      LLM Portfolio Lab is a research platform designed to systematically evaluate 
-      and compare LLM-generated investment portfolios under standardized, 
-      transparent, and reproducible conditions.
-    </p>
+        <p className="lead">
+          LLM Portfolio Lab is a research platform designed to systematically
+          evaluate and compare LLM-generated investment portfolios under
+          standardized, transparent, and reproducible conditions.
+        </p>
 
-    <p>
-      Each large language model (LLM) is given 
-      <strong>$100 in initial capital</strong>, fully invested, and is tasked with 
-      constructing a portfolio intended to 
-      <strong>outperform the S&P 500 over a full market cycle</strong>.
-      The S&P 500 (proxied by <strong>SPY</strong>) serves as the benchmark 
-      for relative performance evaluation.
-    </p>
+        <p>
+          Each large language model (LLM) is given{" "}
+          <strong>$100 in initial capital</strong>, fully invested, and is
+          tasked with constructing a portfolio intended to{" "}
+          <strong>outperform the S&P 500 over a full market cycle</strong>.
+          The S&P 500 (proxied by <strong>SPY</strong>) serves as the benchmark
+          for relative performance evaluation.
+        </p>
       </section>
 
       <section className="layout">
@@ -111,8 +115,6 @@ export default function Home() {
           <div className="card-head">
             <div>
               <p className="title">Portfolio Stats</p>
-              <p className="sub">
-              </p>
             </div>
             <div className="pill">
               {statsErr ? `Last error: ${statsErr}` : "Live"}
@@ -132,23 +134,35 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {payload?.stats ? (
-                    Object.entries(payload.stats).map(([name, s]) => (
+                  {sortedStats.length > 0 ? (
+                    sortedStats.map(([name, s]) => (
                       <tr key={name}>
                         <td>
                           <strong>{name}</strong>
                         </td>
+
                         <td className="right">
-                          {s.end_value != null ? fmtDollars(s.end_value) : "—"}
+                          {s.end_value != null
+                            ? fmtDollars(s.end_value)
+                            : "—"}
                         </td>
+
                         <td className="right">
-                          {(s.total_return * 100).toFixed(2)}%
+                          {Number.isFinite(s.total_return)
+                            ? (s.total_return * 100).toFixed(2) + "%"
+                            : "—"}
                         </td>
+
                         <td className="right">
-                          {(s.max_drawdown * 100).toFixed(2)}%
+                          {Number.isFinite(s.max_drawdown)
+                            ? (s.max_drawdown * 100).toFixed(2) + "%"
+                            : "—"}
                         </td>
+
                         <td className="right">
-                          {Number.isFinite(s.sharpe) ? s.sharpe.toFixed(2) : "—"}
+                          {Number.isFinite(s.sharpe)
+                            ? s.sharpe.toFixed(2)
+                            : "—"}
                         </td>
                       </tr>
                     ))
