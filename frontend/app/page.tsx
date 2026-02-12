@@ -89,8 +89,8 @@ export default function Home() {
         <div className="card" id="chart">
           <div className="card-head">
             <div>
-              <p className="title">Combined Performance Chart</p>
-              <p className="sub">Live from FastAPI • portfolio value (base $100)</p>
+              <p className="title">Performance Chart</p>
+              <p className="sub"> • portfolio value (base $100)</p>
             </div>
             <div className="pill">Base: $100</div>
           </div>
