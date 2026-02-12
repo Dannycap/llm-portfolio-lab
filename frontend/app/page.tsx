@@ -104,10 +104,6 @@ export default function Home() {
             <div>
               <p className="title">Portfolio Stats</p>
               <p className="sub">
-                Live performance metrics
-                {totalPortfolioValue != null
-                  ? ` • Total portfolio value ${fmtDollars(totalPortfolioValue)}`
-                  : ""}
               </p>
             </div>
             <div className="pill">
