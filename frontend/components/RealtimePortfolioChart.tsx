@@ -21,137 +21,53 @@ function fmtMoney(x: number) {
   return `$${x.toFixed(2)}`;
 }
 
-// ---------- ✅ Perceptual-ish, no-look-alikes color generator (deterministic) ----------
-function oklchToCss(L: number, C: number, h: number) {
-  return `oklch(${L.toFixed(3)} ${C.toFixed(3)} ${h.toFixed(2)})`;
-}
-
-function hslToRgb(h: number, s: number, l: number) {
-  h = ((h % 360) + 360) % 360;
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = l - c / 2;
-
-  let r = 0,
-    g = 0,
-    b = 0;
-  if (h < 60) {
-    r = c;
-    g = x;
-    b = 0;
-  } else if (h < 120) {
-    r = x;
-    g = c;
-    b = 0;
-  } else if (h < 180) {
-    r = 0;
-    g = c;
-    b = x;
-  } else if (h < 240) {
-    r = 0;
-    g = x;
-    b = c;
-  } else if (h < 300) {
-    r = x;
-    g = 0;
-    b = c;
-  } else {
-    r = c;
-    g = 0;
-    b = x;
-  }
-
-  return {
-    r: Math.round((r + m) * 255),
-    g: Math.round((g + m) * 255),
-    b: Math.round((b + m) * 255),
-  };
-}
-
-function rgbDist(
-  a: { r: number; g: number; b: number },
-  b: { r: number; g: number; b: number }
-) {
-  // Weighted distance (approx perceptual)
-  const dr = a.r - b.r;
-  const dg = a.g - b.g;
-  const db = a.b - b.b;
-  return Math.sqrt(0.30 * dr * dr + 0.59 * dg * dg + 0.11 * db * db);
-}
-
-function hashCode(s: string) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (h << 5) - h + s.charCodeAt(i);
-    h |= 0;
-  }
-  return h;
-}
+// -------------------- ✅ Color system (fixed) --------------------
+// Evenly-spaced hues across N series (max separation for the set),
+// and OKLCH when supported for better perceptual distinctness.
 
 function supportsOklch() {
   try {
     // @ts-ignore
-    return typeof CSS !== "undefined" && CSS.supports && CSS.supports("color", "oklch(0.7 0.15 200)");
+    return typeof CSS !== "undefined" && CSS.supports && CSS.supports("color", "oklch(0.75 0.16 200)");
   } catch {
     return false;
   }
 }
 
-// ✅ Build colors with minimum distance to avoid "looks the same"
 function buildColorMap(names: string[]) {
+  // Stable ordering => stable colors across renders
   const ordered = [...names].sort((a, b) => a.localeCompare(b));
+  const n = Math.max(ordered.length, 1);
+
   const useOklch = supportsOklch();
 
-  const GOLDEN_ANGLE = 137.508;
-  const usedRgb: Array<{ r: number; g: number; b: number }> = [];
+  // Patterns to avoid “neighbors feel same” on dark background
+  // (tiny variation in lightness/chroma is enough)
+  const Ls = [0.78, 0.72, 0.84, 0.68];
+  const Cs = [0.16, 0.18, 0.14, 0.19];
+
+  // Slight hue offset so first series isn't always "red"
+  const HUE_OFFSET = 18;
+
   const map: Record<string, string> = {};
-
-  const MIN_DIST = 95; // ↑ bump this up if you still see look-alikes
-  const MAX_TRIES = 120;
-
-  // Lightness/chroma bands (keeps separation across many lines)
-  const Ls = [0.82, 0.74, 0.66, 0.86, 0.70, 0.60, 0.90, 0.78];
-  const Cs = [0.20, 0.18, 0.16, 0.21, 0.17, 0.15, 0.22, 0.19];
-
   for (let i = 0; i < ordered.length; i++) {
     const name = ordered[i];
-    const seed = Math.abs(hashCode(name)) % 360;
 
-    let chosenCss = "";
-    let chosenRgb = { r: 200, g: 200, b: 200 };
+    // ✅ maximal separation for this N
+    const hue = (HUE_OFFSET + (i * 360) / n) % 360;
 
-    for (let t = 0; t < MAX_TRIES; t++) {
-      const hue = (seed + t * GOLDEN_ANGLE) % 360;
+    const band = i % Ls.length;
+    const L = Ls[band];
+    const C = Cs[band];
 
-      const band = (i + t) % Ls.length;
-      const L = Ls[band];
-      const C = Cs[band];
-
-      // Distance check via RGB approximation (good enough for screen separation)
-      const rgb = hslToRgb(hue, 0.78, 0.56);
-
-      const tooClose = usedRgb.some((u) => rgbDist(u, rgb) < MIN_DIST);
-      if (!tooClose) {
-        chosenRgb = rgb;
-        chosenCss = useOklch ? oklchToCss(L, C, hue) : `hsl(${hue.toFixed(3)} 78% 56%)`;
-        break;
-      }
-    }
-
-    if (!chosenCss) {
-      // Fallback: still deterministic
-      const hue = (seed + i * GOLDEN_ANGLE) % 360;
-      chosenRgb = hslToRgb(hue, 0.78, 0.56);
-      chosenCss = useOklch ? oklchToCss(0.76, 0.18, hue) : `hsl(${hue.toFixed(3)} 78% 56%)`;
-    }
-
-    usedRgb.push(chosenRgb);
-    map[name] = chosenCss;
+    // Use OKLCH if available; fall back to HSL
+    map[name] = useOklch
+      ? `oklch(${L.toFixed(3)} ${C.toFixed(3)} ${hue.toFixed(2)})`
+      : `hsl(${hue.toFixed(2)} 75% 58%)`;
   }
-
   return map;
 }
-// --------------------------------------------------------------------------------------
+// ---------------------------------------------------------------
 
 export default function RealtimePortfolioChart() {
   const [data, setData] = useState<Payload | null>(null);
@@ -189,7 +105,8 @@ export default function RealtimePortfolioChart() {
     const rawSeries = data?.series ?? {};
     const names = Object.keys(rawSeries);
 
-    // Detect if data looks like 1.0-index; if so convert to NAV ($100 base)
+    // Detect if data looks like 1.0-index (values around ~1.00 to ~1.05)
+    // If so, convert to NAV ($100 base) by multiplying by 100.
     let looksIndexed = false;
     const sampleVals: number[] = [];
     for (const n of names) {
@@ -477,8 +394,8 @@ export default function RealtimePortfolioChart() {
                   borderRadius: "50%",
                   background: color,
                   flexShrink: 0,
-                  // ✅ reduced glow so colors don’t visually converge
-                  boxShadow: `0 0 4px ${color}66`,
+                  // keep glow subtle so colors don’t “blend” into similarity
+                  boxShadow: `0 0 3px ${color}55`,
                 }}
               />
               <span>{it.name}</span>
@@ -502,7 +419,7 @@ export default function RealtimePortfolioChart() {
       </div>
 
       <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>
-        Hover to inspect values • NAV shown in dollars (base $100) • sorted by return
+    
       </div>
     </div>
   );
