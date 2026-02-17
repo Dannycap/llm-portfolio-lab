@@ -1,0 +1,422 @@
+{
+  "Grok": {
+    "regime_consistency": {
+      "summary": "Late-cycle expansion with solid growth, sticky inflation, and a Fed on hold with easing bias.",
+      "notable_shifts": []
+    },
+    "objective_drift": {
+      "summary": "Relative alpha maximization with tolerance for higher volatility.",
+      "patterns_detected": [
+        "Alpha prioritized over drawdown control"
+      ]
+    },
+    "asset_role_stability": {
+      "stable_assets": [
+        "QQQ",
+        "AVUV",
+        "MTUM",
+        "VWO",
+        "VNQ",
+        "GLD",
+        "TLT"
+      ],
+      "unstable_assets": []
+    },
+    "confidence_analysis": {
+      "trend": "Elevated",
+      "observations": [
+        "High conviction with scenario framing"
+      ]
+    },
+    "cognitive_style": {
+      "labels": [
+        "opportunistic",
+        "benchmark-anchored"
+      ],
+      "rationale": [
+        "Aggressive factor tilts",
+        "SPY-relative framing"
+      ]
+    }
+  },
+  "Gemini-3": {
+    "regime_consistency": {
+      "summary": "Moderate growth with easing bias and rotation expectations.",
+      "notable_shifts": []
+    },
+    "objective_drift": {
+      "summary": "Tactical alpha with optionality.",
+      "patterns_detected": [
+        "Flexibility emphasized"
+      ]
+    },
+    "asset_role_stability": {
+      "stable_assets": [
+        "VGT",
+        "KBWB",
+        "SLV",
+        "XLI",
+        "TLT",
+        "CASH"
+      ],
+      "unstable_assets": []
+    },
+    "confidence_analysis": {
+      "trend": "Moderate",
+      "observations": [
+        "Cash tempers conviction"
+      ]
+    },
+    "cognitive_style": {
+      "labels": [
+        "tactical",
+        "risk-conscious"
+      ],
+      "rationale": [
+        "Sector rotation",
+        "Optionality retained"
+      ]
+    }
+  },
+  "Meta AI": {
+    "regime_consistency": {
+      "summary": "Mixed macro signals with AI optimism.",
+      "notable_shifts": []
+    },
+    "objective_drift": {
+      "summary": "Diversification-first.",
+      "patterns_detected": [
+        "Volatility reduction prioritized"
+      ]
+    },
+    "asset_role_stability": {
+      "stable_assets": [
+        "MSFT",
+        "GOOGL",
+        "NVDA",
+        "JNJ",
+        "KO",
+        "VOO",
+        "CSJ",
+        "GLD"
+      ],
+      "unstable_assets": []
+    },
+    "confidence_analysis": {
+      "trend": "Moderate-to-low",
+      "observations": [
+        "Wide planning ranges"
+      ]
+    },
+    "cognitive_style": {
+      "labels": [
+        "stability-seeking"
+      ],
+      "rationale": [
+        "Income ballast",
+        "Low concentration"
+      ]
+    }
+  },
+  "DeepSeek": {
+    "regime_consistency": {
+      "summary": "Stagflation-lite with elevated inflation and tighter policy.",
+      "notable_shifts": []
+    },
+    "objective_drift": {
+      "summary": "Drawdown control dominates.",
+      "patterns_detected": [
+        "Crisis resilience emphasized"
+      ]
+    },
+    "asset_role_stability": {
+      "stable_assets": [
+        "AVUV",
+        "IMTM",
+        "USMV",
+        "QUAL",
+        "DBMF",
+        "KMLM",
+        "DBC",
+        "VTIP",
+        "BIL"
+      ],
+      "unstable_assets": []
+    },
+    "confidence_analysis": {
+      "trend": "Measured",
+      "observations": [
+        "Stress testing explicit"
+      ]
+    },
+    "cognitive_style": {
+      "labels": [
+        "risk-averse",
+        "defensive"
+      ],
+      "rationale": [
+        "Alternatives heavy",
+        "Downside-first"
+      ]
+    }
+  },
+  "Claude Sonnet 4.5": {
+    "regime_consistency": {
+      "summary": "Late-cycle expansion with AI-driven conviction.",
+      "notable_shifts": []
+    },
+    "objective_drift": {
+      "summary": "Maximize relative alpha.",
+      "patterns_detected": [
+        "Risk subordinated"
+      ]
+    },
+    "asset_role_stability": {
+      "stable_assets": [
+        "VBR",
+        "NVDA",
+        "MSFT",
+        "VTWG",
+        "AVGO",
+        "GOOGL",
+        "GLD",
+        "VGIT"
+      ],
+      "unstable_assets": []
+    },
+    "confidence_analysis": {
+      "trend": "High",
+      "observations": [
+        "Tight forecasts"
+      ]
+    },
+    "cognitive_style": {
+      "labels": [
+        "high-conviction",
+        "narrative-driven"
+      ],
+      "rationale": [
+        "Concentrated bets",
+        "Thematic dominance"
+      ]
+    }
+  },
+  "ChatGPT-5.2": {
+    "regime_consistency": {
+      "summary": "Moderate growth with easing bias and elevated uncertainty.",
+      "notable_shifts": []
+    },
+    "objective_drift": {
+      "summary": "Risk-adjusted returns via diversification.",
+      "patterns_detected": [
+        "Volatility dampening"
+      ]
+    },
+    "asset_role_stability": {
+      "stable_assets": [
+        "SPY",
+        "QQQ",
+        "VIG",
+        "VEA",
+        "EEM",
+        "EWY",
+        "IJR",
+        "XLU",
+        "XLP",
+        "GLD",
+        "GSG",
+        "AGG",
+        "HYG"
+      ],
+      "unstable_assets": []
+    },
+    "confidence_analysis": {
+      "trend": "Moderate",
+      "observations": [
+        "Balanced framing"
+      ]
+    },
+    "cognitive_style": {
+      "labels": [
+        "balanced",
+        "diversification-first"
+      ],
+      "rationale": [
+        "Multi-asset balance"
+      ]
+    }
+  },
+  "ChatGPT-5.2 DeepResearch": {
+    "regime_consistency": {
+      "summary": "Restrictive-to-neutral policy with positive real yields.",
+      "notable_shifts": []
+    },
+    "objective_drift": {
+      "summary": "Full-cycle outperformance via drawdown mitigation.",
+      "patterns_detected": [
+        "Compounding prioritized"
+      ]
+    },
+    "asset_role_stability": {
+      "stable_assets": [
+        "VOO",
+        "IWN",
+        "MTUM",
+        "EFV",
+        "IEMG",
+        "VNQ",
+        "IEF",
+        "SCHP",
+        "DBMF",
+        "IAU"
+      ],
+      "unstable_assets": []
+    },
+    "confidence_analysis": {
+      "trend": "Moderate",
+      "observations": [
+        "Probabilistic planning"
+      ]
+    },
+    "cognitive_style": {
+      "labels": [
+        "factor-driven",
+        "full-cycle"
+      ],
+      "rationale": [
+        "Markowitz discipline",
+        "Role separation"
+      ]
+    }
+  },
+  "Gemini-3 DeepResearch": {
+    "regime_consistency": {
+      "summary": "Fiscal-dominant late cycle with policy dispersion.",
+      "notable_shifts": []
+    },
+    "objective_drift": {
+      "summary": "Policy-aligned alpha with capped drawdowns.",
+      "patterns_detected": [
+        "Beta constrained"
+      ]
+    },
+    "asset_role_stability": {
+      "stable_assets": [
+        "MADE",
+        "QQQ",
+        "DRLL",
+        "VXUS",
+        "VIG",
+        "EWJ",
+        "GLD",
+        "BKLN"
+      ],
+      "unstable_assets": []
+    },
+    "confidence_analysis": {
+      "trend": "High but disciplined",
+      "observations": [
+        "Institutional framing"
+      ]
+    },
+    "cognitive_style": {
+      "labels": [
+        "policy-driven",
+        "institutional"
+      ],
+      "rationale": [
+        "Fiscal dominance logic"
+      ]
+    }
+  },
+  "Meta AI Thinking": {
+    "regime_consistency": {
+      "summary": "Resilient growth, persistent inflation, geopolitical fragmentation.",
+      "notable_shifts": []
+    },
+    "objective_drift": {
+      "summary": "Barbell growth-value outperformance.",
+      "patterns_detected": [
+        "Beta > 1 accepted"
+      ]
+    },
+    "asset_role_stability": {
+      "stable_assets": [
+        "NVDA",
+        "MSFT",
+        "CRWD",
+        "IWM",
+        "BRK.B",
+        "JPM",
+        "VNQ",
+        "GLD",
+        "CCJ",
+        "LNG"
+      ],
+      "unstable_assets": []
+    },
+    "confidence_analysis": {
+      "trend": "High",
+      "observations": [
+        "Narrative confidence"
+      ]
+    },
+    "cognitive_style": {
+      "labels": [
+        "narrative-driven",
+        "thematic"
+      ],
+      "rationale": [
+        "AI + energy dominance"
+      ]
+    }
+  },
+  "DeepSeek DeepResearch": {
+    "regime_consistency": {
+      "summary": "Late-cycle slowdown with rising recession risk.",
+      "notable_shifts": [
+        "Iterative defensive shift",
+        "Sharpe-driven re-optimization"
+      ]
+    },
+    "objective_drift": {
+      "summary": "Risk-adjusted outperformance via Sharpe maximization.",
+      "patterns_detected": [
+        "Self-correction loops"
+      ]
+    },
+    "asset_role_stability": {
+      "stable_assets": [
+        "MTUM",
+        "QUAL",
+        "IEF",
+        "GLD",
+        "DBMF",
+        "BIL"
+      ],
+      "unstable_assets": [
+        "SPY",
+        "QQQ",
+        "VTV",
+        "IWM",
+        "HYG"
+      ]
+    },
+    "confidence_analysis": {
+      "trend": "Fluctuating \u2192 convergent",
+      "observations": [
+        "Explicit self-critique"
+      ]
+    },
+    "cognitive_style": {
+      "labels": [
+        "iterative",
+        "self-critical",
+        "Sharpe-optimized"
+      ],
+      "rationale": [
+        "Objective-function purity"
+      ]
+    }
+  }
+}
