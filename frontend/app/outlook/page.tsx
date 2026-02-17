@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
 type OutlookModel = {
   name: string;
@@ -69,53 +68,26 @@ export default function OutlookPage() {
     let mounted = true;
 
     const fetchOutlook = async () => {
-      // Cache-bust to avoid Vercel edge caching stale /public/outlook.json
-      const bust = Date.now();
-
-      // Put outlook.json FIRST so changes to that file actually show up
-      const endpoints = [
-        `/outlook.json?v=${bust}`,
-        `/api/outlook?v=${bust}`,
-        `${API_BASE}/api/outlook?v=${bust}`,
-      ];
-
-      const failures: string[] = [];
+      const endpoint = `/outlook.json?v=${Date.now()}`;
 
       try {
-        for (const endpoint of endpoints) {
-          try {
-            const res = await fetch(endpoint, {
-              cache: "no-store",
-              headers: { "cache-control": "no-cache" },
-            });
+        const res = await fetch(endpoint, {
+          cache: "no-store",
+          headers: { "cache-control": "no-cache" },
+        });
 
-            if (!res.ok) {
-              failures.push(`${endpoint} -> HTTP ${res.status}`);
-              continue;
-            }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-            const json = await res.json();
-            const normalized = normalizeOutlookPayload(json);
+        const json = await res.json();
+        const normalized = normalizeOutlookPayload(json);
 
-            if ((normalized.models ?? []).length === 0) {
-              failures.push(`${endpoint} -> empty payload`);
-              continue;
-            }
+        console.log("Outlook endpoint used:", endpoint);
+        console.log("Models being rendered:", (normalized.models ?? []).map((m) => m.name));
 
-            // Helpful debug: shows which endpoint actually won
-            console.log("Outlook source used:", endpoint);
-
-            if (!mounted) return;
-            setData(normalized);
-            setErr(null);
-            setLastUpdatedTs(Date.now());
-            return;
-          } catch (endpointErr: any) {
-            failures.push(`${endpoint} -> ${String(endpointErr?.message ?? endpointErr)}`);
-          }
-        }
-
-        throw new Error(failures.length > 0 ? failures.join(" | ") : "No outlook source available");
+        if (!mounted) return;
+        setData(normalized);
+        setErr(null);
+        setLastUpdatedTs(Date.now());
       } catch (e: any) {
         if (!mounted) return;
         setErr(String(e?.message ?? e));
