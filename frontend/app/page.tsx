@@ -182,7 +182,7 @@ export default function Home() {
 
       <div className="footer">
         <div>© 2026 LLM Portfolio Lab</div>
-        <div>Research only • No investment advice</div>
+        <div>Research only • Not investment advice</div>
       </div>
     </div>
   );
