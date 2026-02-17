@@ -1,6 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: "/outlook.json",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, no-cache, must-revalidate",
+          },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     // If you run FastAPI separately (default port 10000), this proxies API calls from Next -> FastAPI.
     // Outlook is served by FastAPI too (backend/outlook.json). If you instead want Next to serve it,
