@@ -21,18 +21,27 @@ function fmtMoney(x: number) {
   return `$${x.toFixed(2)}`;
 }
 
-function hashCode(s: string) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (h << 5) - h + s.charCodeAt(i);
-    h |= 0;
-  }
-  return h;
-}
+// ✅ Unique, deterministic colors: no duplicates across series
+function buildColorMap(names: string[]) {
+  // Sort to keep colors stable (don’t reshuffle when legend order changes)
+  const ordered = [...names].sort((a, b) => a.localeCompare(b));
+  const GOLDEN_ANGLE = 137.508;
 
-function getSeriesColor(name: string) {
-  const hue = Math.abs(hashCode(name)) % 360;
-  return `hsl(${hue} 70% 60%)`;
+  const map: Record<string, string> = {};
+  for (let i = 0; i < ordered.length; i++) {
+    const name = ordered[i];
+
+    // Unique hue per index (no repeats for different i)
+    const hue = (i * GOLDEN_ANGLE) % 360;
+
+    // Small lightness banding so large lists stay visually distinct
+    const band = Math.floor(i / 12);
+    const light = 60 - (band % 3) * 6; // 60, 54, 48...
+
+    // Keep decimals so string values don’t collide due to rounding
+    map[name] = `hsl(${hue.toFixed(3)} 70% ${light}%)`;
+  }
+  return map;
 }
 
 export default function RealtimePortfolioChart() {
@@ -66,7 +75,7 @@ export default function RealtimePortfolioChart() {
     };
   }, []);
 
-  const { labels, series, names, minY, maxY, legendItems } = useMemo(() => {
+  const { labels, series, names, minY, maxY, legendItems, colorMap } = useMemo(() => {
     const labels = data?.labels ?? [];
     const rawSeries = data?.series ?? {};
     const names = Object.keys(rawSeries);
@@ -122,6 +131,8 @@ export default function RealtimePortfolioChart() {
       .filter((x) => isFiniteNumber(x.last))
       .sort((a, b) => (b.last as number) - (a.last as number));
 
+    const colorMap = buildColorMap(names);
+
     return {
       labels,
       series,
@@ -129,6 +140,7 @@ export default function RealtimePortfolioChart() {
       minY: minYPadded,
       maxY: maxYPadded,
       legendItems,
+      colorMap,
     };
   }, [data]);
 
@@ -218,7 +230,7 @@ export default function RealtimePortfolioChart() {
             const arr = series[name] ?? [];
             if (arr.length < 2) return null;
 
-            const stroke = getSeriesColor(name);
+            const stroke = colorMap[name] ?? "hsl(0 0% 80%)";
 
             let d = "";
             for (let i = 0; i < arr.length; i++) {
@@ -330,7 +342,7 @@ export default function RealtimePortfolioChart() {
         }}
       >
         {legendItems.map((it) => {
-          const color = getSeriesColor(it.name);
+          const color = colorMap[it.name] ?? "hsl(0 0% 80%)";
           const pct = isFiniteNumber(it.last) ? ((it.last - 100) / 100) * 100 : null;
           const isPositive = pct != null && pct >= 0;
 
