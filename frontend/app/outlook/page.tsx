@@ -69,13 +69,26 @@ export default function OutlookPage() {
     let mounted = true;
 
     const fetchOutlook = async () => {
-      const endpoints = [...new Set(["/api/outlook", `${API_BASE}/api/outlook`, "/outlook.json"])];
+      // Cache-bust to avoid Vercel edge caching stale /public/outlook.json
+      const bust = Date.now();
+
+      // Put outlook.json FIRST so changes to that file actually show up
+      const endpoints = [
+        `/outlook.json?v=${bust}`,
+        `/api/outlook?v=${bust}`,
+        `${API_BASE}/api/outlook?v=${bust}`,
+      ];
+
       const failures: string[] = [];
 
       try {
         for (const endpoint of endpoints) {
           try {
-            const res = await fetch(endpoint, { cache: "no-store" });
+            const res = await fetch(endpoint, {
+              cache: "no-store",
+              headers: { "cache-control": "no-cache" },
+            });
+
             if (!res.ok) {
               failures.push(`${endpoint} -> HTTP ${res.status}`);
               continue;
@@ -83,10 +96,14 @@ export default function OutlookPage() {
 
             const json = await res.json();
             const normalized = normalizeOutlookPayload(json);
+
             if ((normalized.models ?? []).length === 0) {
               failures.push(`${endpoint} -> empty payload`);
               continue;
             }
+
+            // Helpful debug: shows which endpoint actually won
+            console.log("Outlook source used:", endpoint);
 
             if (!mounted) return;
             setData(normalized);
@@ -244,3 +261,4 @@ export default function OutlookPage() {
     </div>
   );
 }
+
