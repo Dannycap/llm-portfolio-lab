@@ -64,7 +64,7 @@ PORTFOLIOS = {
         "DBMF": 0.15, "KMLM": 0.10, "DBC": 0.10, "VNQI": 0.05,
         "VTIP": 0.05, "BIL": 0.05, "ARKQ": 0.05,
     },
-    "Meta Ai Thinking": {
+    "Meta AI Thinking": {
         "NVDA": 0.15, "MSFT": 0.15, "CRWD": 0.10, "IWM": 0.10,
         "BRK.B": 0.10, "JPM": 0.10, "VNQ": 0.10,
         "GLD": 0.10, "CCJ": 0.05, "LNG": 0.05,
@@ -79,7 +79,7 @@ PORTFOLIOS = {
         "HYG": 0.03, "VNQ": 0.05, "DBC": 0.03, "URA": 0.02,
         "KMLM": 0.05, "JEPI": 0.05, "SGOV": 0.05,
     },
-    "Gemini-3 DeepResearch ": {
+    "Gemini-3 DeepResearch": {
         "MADE": 0.20, "DRLL": 0.15, "QQQ": 0.15, "VIG": 0.10,
         "VXUS": 0.10, "EWJ": 0.10, "GLD": 0.10, "BKLN": 0.10,
     },
@@ -429,6 +429,8 @@ def _run_ff5_regressions() -> dict:
             logger.warning("OLS failed for %s: %s", pname, exc)
 
     if db_rows:
+        current_names = list(PORTFOLIOS.keys())
+        placeholders = ",".join("?" * len(current_names))
         with sqlite3.connect(DB_PATH) as conn:
             conn.executemany(
                 """INSERT OR REPLACE INTO ff5_regressions
@@ -436,6 +438,11 @@ def _run_ff5_regressions() -> dict:
                     beta_rmw, beta_cma, r_squared, n_obs, computed_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 db_rows,
+            )
+            # Remove stale rows from renamed/removed portfolios
+            conn.execute(
+                f"DELETE FROM ff5_regressions WHERE portfolio_name NOT IN ({placeholders})",
+                current_names,
             )
             conn.commit()
 

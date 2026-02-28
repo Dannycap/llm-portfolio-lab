@@ -233,14 +233,16 @@ export default function OutlookRadar({ asOf, models, loadings, loadingsLoading }
     return models.filter((m) => findLoading(m.name, loadings) !== null);
   }, [models, loadings, hasLoadings]);
 
-  const effectiveModels = hasLoadings ? ff5Models : models;
+  // Use FF5 mode only when we have real loadings AND at least one model matched
+  const useFF5 = hasLoadings && ff5Models.length > 0;
+  const effectiveModels = useFF5 ? ff5Models : models;
   const effectiveNames  = effectiveModels.map((m) => m.name);
 
-  const AXES = (hasLoadings ? FF5_AXES : HEURISTIC_AXES) as readonly string[];
+  const AXES = (useFF5 ? FF5_AXES : HEURISTIC_AXES) as readonly string[];
 
   const scoresByName = useMemo<Record<string, Record<string, number>>>(() => {
     const out: Record<string, Record<string, number>> = {};
-    if (hasLoadings && loadings) {
+    if (useFF5 && loadings) {
       for (const m of ff5Models) {
         const loading = findLoading(m.name, loadings);
         if (loading) out[m.name] = scoreFromLoadings(loading);
@@ -249,7 +251,7 @@ export default function OutlookRadar({ asOf, models, loadings, loadingsLoading }
       for (const m of models) out[m.name] = scoreModel(m);
     }
     return out;
-  }, [models, ff5Models, loadings, hasLoadings]);
+  }, [models, ff5Models, loadings, useFF5]);
 
   const [active, setActive] = useState<string[]>([]);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -260,7 +262,7 @@ export default function OutlookRadar({ asOf, models, loadings, loadingsLoading }
     setActive(effectiveNames.slice(0, Math.min(4, effectiveNames.length)));
     setAnimKey((k) => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveNames.join("|"), hasLoadings]);
+  }, [effectiveNames.join("|"), useFF5]);
 
   const chartData = useMemo(
     () =>
@@ -275,7 +277,7 @@ export default function OutlookRadar({ asOf, models, loadings, loadingsLoading }
   // Tooltip: close over loadings so it can show raw factor values
   const TooltipContent = useMemo(() => {
     const loadingsSnap = loadings ?? {};
-    const ff5Mode = hasLoadings;
+    const ff5Mode = useFF5;
     return function CustomTooltip({ active: a, payload, label }: any) {
       if (!a || !payload?.length) return null;
       return (
@@ -317,13 +319,13 @@ export default function OutlookRadar({ asOf, models, loadings, loadingsLoading }
         </div>
       );
     };
-  }, [loadings, hasLoadings]);
+  }, [loadings, useFF5]);
 
   if (effectiveModels.length === 0 && !loadingsLoading) return null;
 
   const modeLabel = loadingsLoading
     ? "Loading factor data …"
-    : hasLoadings
+    : useFF5
     ? `FF5 Factor Loadings · R² shown · ${ff5Models.length} portfolios`
     : "Heuristic outlook scores";
 
@@ -333,7 +335,7 @@ export default function OutlookRadar({ asOf, models, loadings, loadingsLoading }
         <div>
           <p className="title">How each model sees the market</p>
           <p className="sub">
-            {hasLoadings
+            {useFF5
               ? "Fama-French 5-Factor OLS regression loadings · normalized to 0–100"
               : "Radar view of worldview signals extracted from each model's Outlook"}
           </p>
@@ -362,15 +364,15 @@ export default function OutlookRadar({ asOf, models, loadings, loadingsLoading }
             <span
               style={{
                 fontSize: 11, padding: "3px 10px", borderRadius: 999,
-                background: hasLoadings ? "rgba(99,102,241,0.15)" : "rgba(107,114,128,0.12)",
-                color: hasLoadings ? "#818cf8" : "#9ca3af",
-                border: `1px solid ${hasLoadings ? "rgba(99,102,241,0.3)" : "#374151"}`,
+                background: useFF5 ? "rgba(99,102,241,0.15)" : "rgba(107,114,128,0.12)",
+                color: useFF5 ? "#818cf8" : "#9ca3af",
+                border: `1px solid ${useFF5 ? "rgba(99,102,241,0.3)" : "#374151"}`,
                 fontWeight: 700,
               }}
             >
-              {hasLoadings ? "FF5 Factor Mode" : "Heuristic Mode"}
+              {useFF5 ? "FF5 Factor Mode" : "Heuristic Mode"}
             </span>
-            {hasLoadings && (
+            {useFF5 && (
               <span style={{ fontSize: 11, color: "#6b7280" }}>
                 {ff5Models.length} of {models.length} portfolios have regression data
               </span>
@@ -384,7 +386,7 @@ export default function OutlookRadar({ asOf, models, loadings, loadingsLoading }
             {effectiveNames.map((n) => {
               const on = active.includes(n);
               const c  = modelColor(n);
-              const loading = hasLoadings && loadings ? findLoading(n, loadings) : null;
+              const loading = useFF5 && loadings ? findLoading(n, loadings) : null;
               return (
                 <button
                   key={n}
@@ -491,7 +493,7 @@ export default function OutlookRadar({ asOf, models, loadings, loadingsLoading }
           }}
         >
           {AXES.map((a) => {
-            const desc = hasLoadings
+            const desc = useFF5
               ? FF5_LEGEND[a as FF5Axis]
               : HEURISTIC_LEGEND[a as HeuristicAxis];
             return (

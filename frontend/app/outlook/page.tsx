@@ -1,10 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import OutlookRadar, { FF5Loading } from "../../components/OutlookRadar";
 import type { OutlookModelForRadar } from "../../components/OutlookRadar";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+
+/** Alias map matching OutlookRadar so snapshots section also resolves correctly */
+const OUTLOOK_TO_PORTFOLIO: Record<string, string> = {
+  "DeepSeek":            "DeepSeek-V3",
+  "DeepSeek DeepResearch": "DeepSeek-DeepThink",
+};
+
+function resolveLoading(name: string, loadings: Record<string, FF5Loading>): FF5Loading | null {
+  if (loadings[name]) return loadings[name];
+  const alias = OUTLOOK_TO_PORTFOLIO[name];
+  if (alias && loadings[alias]) return loadings[alias];
+  const norm = name.trim().toLowerCase();
+  const key = Object.keys(loadings).find((k) => k.trim().toLowerCase() === norm);
+  return key ? loadings[key] : null;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -87,6 +102,28 @@ export default function OutlookPage() {
   const [err, setErr] = useState<string | null>(null);
   const [loadings, setLoadings] = useState<Record<string, FF5Loading>>({});
   const [loadingsLoading, setLoadingsLoading] = useState(true);
+  const [loadingsErr, setLoadingsErr] = useState<string | null>(null);
+
+  const fetchLoadings = useCallback(() => {
+    setLoadingsLoading(true);
+    setLoadingsErr(null);
+    fetch(`${API_BASE}/api/ff5/loadings`, { cache: "no-store" })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((j: Record<string, FF5Loading>) => {
+        const count = Object.keys(j ?? {}).length;
+        console.log(`[OutlookPage] FF5 loadings received: ${count} portfolios`, Object.keys(j ?? {}));
+        setLoadings(j ?? {});
+      })
+      .catch((e: any) => {
+        console.warn("[OutlookPage] FF5 loadings fetch failed:", e);
+        setLoadingsErr(String(e?.message ?? e));
+        setLoadings({});
+      })
+      .finally(() => setLoadingsLoading(false));
+  }, []);
 
   useEffect(() => {
     // Fetch outlook data
@@ -98,14 +135,9 @@ export default function OutlookPage() {
       .then((j: OutlookPayload) => { setData(j); setErr(null); })
       .catch((e: any) => setErr(String(e?.message ?? e)));
 
-    // Fetch FF5 factor loadings (fails gracefully)
-    setLoadingsLoading(true);
-    fetch(`${API_BASE}/api/ff5/loadings`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : {}))
-      .then((j: Record<string, FF5Loading>) => setLoadings(j ?? {}))
-      .catch(() => setLoadings({}))
-      .finally(() => setLoadingsLoading(false));
-  }, []);
+    // Fetch FF5 factor loadings
+    fetchLoadings();
+  }, [fetchLoadings]);
 
   const models = useMemo(() => toArrayModels(data), [data]);
 
@@ -144,6 +176,23 @@ export default function OutlookPage() {
         </pre>
       ) : null}
 
+      {/* FF5 fetch error + refresh */}
+      {!loadingsLoading && (loadingsErr || Object.keys(loadings).length === 0) ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", border: "1px solid #3f3f4a", borderRadius: 12, marginBottom: 14, flexWrap: "wrap" as const }}>
+          <span style={{ color: "#9ca3af", fontSize: 13 }}>
+            {loadingsErr
+              ? `FF5 data unavailable: ${loadingsErr}`
+              : "FF5 factor data not yet loaded — the backend may still be initializing."}
+          </span>
+          <button
+            onClick={fetchLoadings}
+            style={{ padding: "5px 14px", borderRadius: 8, border: "1px solid #3f3f4a", background: "rgba(99,102,241,0.12)", color: "#818cf8", cursor: "pointer", fontSize: 13, fontWeight: 700 }}
+          >
+            Reload FF5 data
+          </button>
+        </div>
+      ) : null}
+
       {/* Radar — uses FF5 factor loadings when available, heuristic fallback otherwise */}
       <div style={{ marginBottom: 16 }}>
         <OutlookRadar
@@ -172,9 +221,7 @@ export default function OutlookPage() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
             {models.map((m) => {
-              const loading = loadings[m.name] ?? Object.entries(loadings).find(
-                ([k]) => k.trim().toLowerCase() === m.name.trim().toLowerCase()
-              )?.[1];
+              const loading = resolveLoading(m.name, loadings);
               return (
                 <div
                   key={m.name}
