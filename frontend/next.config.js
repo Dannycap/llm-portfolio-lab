@@ -10,7 +10,11 @@ const nextConfig = {
     // Outlook is served by FastAPI too (backend/outlook.json). If you instead want Next to serve it,
     // remove this rewrite and add an app route handler.
     // Strip any trailing path so the base is always just the origin.
-    const raw = process.env.NEXT_PUBLIC_API_BASE || "https://llm-portfolio-lab.onrender.com";
+    // In development default to local FastAPI; in production default to Render.
+    const devDefault = "http://127.0.0.1:8004";
+    const prodDefault = "https://llm-portfolio-lab.onrender.com";
+    const raw = process.env.NEXT_PUBLIC_API_BASE ||
+      (process.env.NODE_ENV === "production" ? prodDefault : devDefault);
     const apiBase = raw.replace(/\/api\/.*$/, "");
     return [
       { source: "/api/health",            destination: `${apiBase}/api/health` },
