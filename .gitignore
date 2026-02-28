@@ -1,0 +1,25 @@
+# --- Node / Next ---
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+dist/
+*.log
+tsconfig.tsbuildinfo
+
+# --- Python ---
+.venv/
+__pycache__/
+*.pyc
+
+# --- Backend runtime ---
+backend/portfolio.db
+
+# --- Env ---
+.env
+.env.*
+
+# --- OS ---
+.DS_Store
+Thumbs.db
