@@ -471,12 +471,10 @@ export default function MethodsPage() {
                 specific LLM (e.g. ChatGPT, Claude, Gemini).
               </li>
               <li>
-                Allocations are equal-weighted or as specified, and held <strong>static</strong>{" "}
-                from the portfolio inception date.
+               
               </li>
               <li>
-                Price data is sourced from <strong>yfinance</strong> and stored in{" "}
-                <strong>SQLite</strong> to avoid redundant API calls.
+              
               </li>
             </ul>
 
