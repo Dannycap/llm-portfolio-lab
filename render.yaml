@@ -1,0 +1,32 @@
+services:
+  # -------------------------------------------------------------------------
+  # Backend — FastAPI / Python
+  # Deploy as: Web Service | Python | Root dir: backend
+  # -------------------------------------------------------------------------
+  - type: web
+    name: llm-portfolio-lab-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+  # -------------------------------------------------------------------------
+  # Frontend — Next.js / Node
+  # Deploy as: Web Service | Node | Root dir: frontend
+  # -------------------------------------------------------------------------
+  - type: web
+    name: llm-portfolio-lab
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    plan: free
+    envVars:
+      # Point the frontend at the backend service above.
+      # If you rename the backend service, update this URL to match.
+      - key: NEXT_PUBLIC_API_BASE
+        value: https://llm-portfolio-lab-api.onrender.com
