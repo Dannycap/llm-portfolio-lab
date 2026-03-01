@@ -1,10 +1,10 @@
 services:
   # -------------------------------------------------------------------------
   # Backend — FastAPI / Python
-  # Deploy as: Web Service | Python | Root dir: backend
+  # URL will be: https://llm-portfolio-lab.onrender.com
   # -------------------------------------------------------------------------
   - type: web
-    name: llm-portfolio-lab-api
+    name: llm-portfolio-lab
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
@@ -16,17 +16,15 @@ services:
 
   # -------------------------------------------------------------------------
   # Frontend — Next.js / Node
-  # Deploy as: Web Service | Node | Root dir: frontend
+  # URL will be: https://llm-portfolio-lab-frontend.onrender.com
   # -------------------------------------------------------------------------
   - type: web
-    name: llm-portfolio-lab
+    name: llm-portfolio-lab-frontend
     runtime: node
     rootDir: frontend
     buildCommand: npm install && npm run build
     startCommand: npm start
     plan: free
     envVars:
-      # Point the frontend at the backend service above.
-      # If you rename the backend service, update this URL to match.
       - key: NEXT_PUBLIC_API_BASE
-        value: https://llm-portfolio-lab-api.onrender.com
+        value: https://llm-portfolio-lab.onrender.com

@@ -12,7 +12,7 @@ const nextConfig = {
     // Strip any trailing path so the base is always just the origin.
     // In development default to local FastAPI; in production default to Render.
     const devDefault = "http://127.0.0.1:8004";
-    const prodDefault = "https://llm-portfolio-lab-api.onrender.com";
+    const prodDefault = "https://llm-portfolio-lab.onrender.com";
     const raw = process.env.NEXT_PUBLIC_API_BASE ||
       (process.env.NODE_ENV === "production" ? prodDefault : devDefault);
     const apiBase = raw.replace(/\/api\/.*$/, "");
